@@ -6,19 +6,22 @@
 
   <!-- Set username and password to values you set in etc/user.properties -->
   <bean id="activemq" class="org.apache.activemq.camel.component.ActiveMQComponent" >
-    <property name="brokerURL" value="tcp://localhost:61616"/>
+    <property name="brokerURL" value="tcp://mybrokercontainer1-chrisjboss.rhcloud.com:46953"/>
     <property name="userName" value="admin"/>
-    <property name="password" value="admin"/>
+    <property name="password" value="zBdeAcWGy2Bd"/>
   </bean>
 
   <bean id="blowUpRoute" class="com.redhat.poc.fsi.route.BlowUpRoute"/>
 
-
+  
   <camelContext id="fundPersisterContext" trace="false" xmlns="http://camel.apache.org/schema/spring"
           xmlns:tx="http://poc.jboss.org/model/xml">
 
     <!--<routeBuilder ref="blowUpRoute"/>-->
-
+	<route id="initRoute">
+		<from uri="timer://runOnce?repeatCount=1" />
+		<to uri="mybatis:createFund?statementType=Update" />
+    </route>
     <route id="databaseRoute">
       <from uri="activemq:topic:events.newfund" />
 
@@ -49,6 +52,12 @@
           <log message="Transformed the message"/>
           <to id="persistFund" uri="mybatis:insertFund?statementType=Insert" />
           <log message="Finished inserting to DB"/>
+          <to id="showFunds" uri="mybatis:selectFunds?statementType=SelectList" />
+          <log message="------Printing Out All data from Database ------ \n${body}\n------------------------"/>
+        </when>
+		<when>
+          <xpath>/tx:transaction/tx:fundName = 'Mock'</xpath>
+          <log message="Mock Fund Found!!!!-Version 1.1" />
         </when>
         <otherwise>
           <log message="Had an invalid message... Discarding Message" />

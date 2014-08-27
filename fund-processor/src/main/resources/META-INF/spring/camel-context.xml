@@ -6,9 +6,9 @@
 
   <!-- Set username and password to values you set in etc/user.properties -->
   <bean id="activemq" class="org.apache.activemq.camel.component.ActiveMQComponent" >
-    <property name="brokerURL" value="tcp://localhost:61616"/>
+    <property name="brokerURL" value="tcp://mybrokercontainer1-chrisjboss.rhcloud.com:46953"/>
     <property name="userName" value="admin"/>
-    <property name="password" value="admin"/>
+    <property name="password" value="zBdeAcWGy2Bd"/>
   </bean>
 
   <camelContext id="queueConsumerContext" trace="true" xmlns="http://camel.apache.org/schema/spring">

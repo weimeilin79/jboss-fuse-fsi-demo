@@ -21,13 +21,24 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="Funds">
+	<resultMap id="FundResult" type="com.redhat.poc.fsi.fund.Transaction" />
+    <insert id="createFund" parameterType="com.redhat.poc.fsi.fund.Transaction">
+	create table funds (
+	    fundNumber INTEGER NOT NULL,
+	    transactionType VARCHAR(10),
+	    fundName VARCHAR (30)
+	  )
+  	</insert>
 
-
-    <!-- Select with no parameters using the result map for Order class. -->
+    
     <insert id="insertFund" parameterType="com.redhat.poc.fsi.fund.Transaction">
     insert into funds ( fundNumber,transactionType, fundName)
     values(#{fundNumber}, #{transactionType}, #{fundName})
-  </insert>
-
+    </insert>
+    
+    <!-- Select with no parameters using the result map for Order class. -->
+	<select id="selectFunds" resultMap="FundResult">
+	    select * from funds order by fundNumber
+	</select>
 </mapper>
         <!-- END SNIPPET: e1 -->

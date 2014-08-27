@@ -1,5 +1,6 @@
 # A complete Fabric8/JBoss Fuse demo
 
+The original project is by Christian Posta, you can find his original 
 So you want to see [Fabric8](http://fabric8.io)/[JBoss Fuse](http://www.jboss.org/products/fuse/overview/) in action, aye? Well I just demo'd this and thought, what the hell, let's spend a few more minutes making it so anyone can re-create this as a starting point. So here goes!
 
 BTW, we're using [JBoss Fuse 6.1](http://www.jboss.org/products/fuse/overview/) in this demo, but you can use the community version, [Fabric8](http://fabric8.io) as well.
@@ -40,98 +41,67 @@ But now we need to deploy them, version, and manage the deployments somehow. At 
 from our development efforts until the code is deployed so we need a consistent, automated, managed approach to deploying
 our solutions. So that's where the "Fuse Fabric" or [Fabric8](http://fabric8.io) piece fits into the picture.
 
-## Setting up the demo
+Before you begin, don't forget to 
+## Setting up Broker
 
 So let's get started.
+Go to your Fuse management console on OpenShift, login. Go to Runtime/MQ and click on create a broker configuration
 
-First note, when you download JBoss Fuse (I will use JBoss Fuse and Fabric8 as interchangeable entities for the purposes
-of this demo), you should edit $FUSE_HOME/etc/users.properties to contain a valid user. You can uncomment the last
-line so that -admin=admin,admin_ user is enabled.
-
-To start Fuse, run this command:
-
-    $FUSE_HOME/bin/fuse
+![01-broker-setup](images/broker-01.png)
     
-This will start the ESB container in a standalone mode. You could deploy the parts of the demo into this standalone
-container if you don't wish to use Fabric. You'd have to build the maven project so that the modules are installed
-into the local maven repository:
+In the configuration page name your broker configuration name, if you don't have enough gear, make sure you change the minimum instance to 1.   
 
-    mvn clean install
- 
-Once you've built the project and installed into the local maven repo, you can run this from the JBoss Fuse shell prompt:
+![02-broker-setup](images/broker-02.png)
 
-    JBossFuse:karaf@root> osgi:install -s mvn:com.redhat.poc.fsi/file-listener/1.0-SNAPSHOT
-        
-This would install the bundle assocaited with the file-listener module.
+Wait for a few moments, you will see the configuration diagram shows up, click on the red triangle to create the container for the broker profile.
 
-Another tip.. you can run each module stand-alone as well by running this command from within the module's directory.
-For example, to start up the _file-listener_ module stand alone:
+![03-broker-setup](images/broker-03.png)
 
-    $SRC_HOME/file-listener $ mvn camel:run
-    
-This will bootstrap the Camel context in the same JVM that's running Maven.. pretty useful for showing how simple, lightweight
- and container agnostic Camel can be.
+Fill in the Openshift login detail
 
+![04-broker-setup](images/broker-04.png)
 
-But we want to demo the Fabric8/Fuse Fabric pieces, so let's continue. 
+Wait for 2 containers to start up, You will also see the container is created in OpenShift
+![05-broker-setup](images/broker-05.png)
+![06-broker-setup](images/broker-06.png)
 
-### Setting up the external DB (Apache Derby)
-Our demo uses an external database, but don't worry it's pretty easy to set that up. We use [Apache Derby](http://db.apache.org/derby/) so download it [from here](http://db.apache.org/derby/releases/release-10.10.2.0.cgi). All you have to do is unpack it (zip/tar) to a location and change directory into the root folder, $DERBY_HOME.
+Find out the service port setting of the broker by going back the main fabric console, and look it up in the Registry
+![07-broker-setup](images/broker-07.png)
 
-You'll need to start the network listener so that the client can connect. Just run this command:
-
-    > $DERBY_HOME/bin/startNetworkServer -h localhost -p 1527
-
-Then you can use the derby _ij_ command promopt to interact with the server and install the required tables.
-
-The DB location must match that in the JDBC URI that's specified in [SqlMapConfig.xml](../fund-persister/src/main/resources/SqlMapConfig.xml). 
-
-So for example, on my machine we do this:
-
-    > $DERBY_HOME/bin/ij
-
-    ij> connect 'jdbc:derby://localhost:1527//Users/ceposta/temp/opp.db;create=true';
-    ij> run '/Users/ceposta/dev/poc/fsi/workspace/fsi-poc/fund-persister/src/main/resources/sql/tables.sql';
-    ij> show tables;
-    ij> select * from funds;
-    
-    
-You should see very clearly that there are no rows in the table because we haven't created any and the microservices
-that handle new-fund events haven't processed anything.
 
 ### Build the profiles for the deployments
 
-You'll need to create a fabric for Jboss Fuse. When we started it earlier, it was really just a standalone ESB container,
-but we want to enable the devops/management tools. So type this:
+Make sure all 3 camel-context.xml in 3 projects has the correct activemq setting, with the IP and Port on the OpenShift and ID/PWD as well.
 
-    JBossFuse:karaf@root> fabric:create --clean --wait-for-provisioning
-    
-This will create a new Fabric registry and turn the container into a Fabric ensemble member. The shell should block until everything is all set up. You should see the following if everything was successful:
+	<bean id="activemq" class="org.apache.activemq.camel.component.ActiveMQComponent" >     
+		<property name="brokerURL" value=" tcp://mybrokercontainer1-chrisjboss.rhcloud.com:46953"/>     
+		<property name="userName" value="admin"/>     
+		<property name="password" value="zBdeAcWGy2Bd"/>   
+	</bean>
 
-    Waiting for container: root
-    Waiting for container root to provision.
-    Using specified zookeeper password:admin
-    
-NOTE: If you're using Fabric8, you don't need to "create a fabric" as this is the default out of the box, i.e., a Fabric is enabled once you start the container.
 
-You can then navigate to the webconsole url: http://localhost:8181, and should see the JBoss Fuse dashboard:
+We're going to use the [fabric8-maven-plugin](http://fabric8.io/gitbook/mavenPlugin.html) to create our profiles and upload the profiles to fabric so we can deploy applications. If you're not familiar with profiles, please see the JBoss Fuse documentation or the [community docs at the Fabric8 website](http://fabric8.io/gitbook/index.html).
+You'll need to change a few things in order to deploy on OpenShift.
+Go to ~/.m2/setting.xml add the id/password of your OpenShift Management Console.
 
-![Fuse Dashboard](images/fuse-dashboard.png)
+	<servers>
+				....
+    		<server>       
+				<id>fabric8.openshift.repo</id>       
+				<username>admin</username>       
+				<password>xxxx</password>     
+	</server>    
 
-Now that you have a fabric server running, we're going to use the [fabric8-maven-plugin](http://fabric8.io/gitbook/mavenPlugin.html) to create our profiles and upload the profiles to fabric so we can deploy applications. If you're not familiar with profiles, please see the JBoss Fuse documentation or the [community docs at the Fabric8 website](http://fabric8.io/gitbook/index.html).
+In pom.xml of the parent directory, Make sure the plugins are configured with the Jolokia Url, setting it to your OpenShift hostname:  http://apname-namespace.rhcloud.com/jolokia
+	<plugin>         
+		<groupId>io.fabric8</groupId>         
+		<artifactId>fabric8-maven-plugin</artifactId>    
+		<version>${fabric8.version}</version> 		
+		<configuration>           
+		<jolokiaUrl>http://fusetest-chrisjboss.rhcloud.com/jolokia</jolokiaUrl> 
+		</configuration>       
+	</plugin>
 
-BTW, you'll need to configure your settings.xml. See [the fabric8-maven-plugin](http://fabric8.io/gitbook/mavenPlugin.html) for more, but here's the snippet from mine:
-
-    <servers>
-      ...
-      <server>
-        <id>fabric8.upload.repo</id>
-        <username>admin</username>
-        <password>admin</password>
-      </server>
-      ...
-    </servers>
-    
     
 Then you can navigate to the root of the source (this project source) and run this command:
 
@@ -169,10 +139,10 @@ Then click the "Create And Start Container button" If everything went okay, you 
 Now repeat this for the other two profiles, fund.persister and fund.processor You should end up with a list
 of containers like this:
 
-![all containers](images/all-containers-provisioned.png)
+![all containers on OpenShift](images/all-containers-provisioned01.png)
 
-How easy was that!? We just deployed our solution as three separate microservices running in their own separate JVMs just
-by clicking a couple links! You should see what else JBoss Fuse/Fabric8 can do with this model, like dynamic runtime discovery, load balancing, master/slave election, versioning, incremental upgrades, rollbacks, and much more!!
+How easy was that!? We just deployed our solution as three separate microservices running in their own separate OpenShift Container just
+by clicking a couple links! You should see what else JBoss Fuse8 can do with this model, like dynamic runtime discovery, load balancing, master/slave election, versioning, incremental upgrades, rollbacks, and much more!!
 
 So, to exercise this demo, we'll need to exercise the file-listener module. And we know that module listens at a location on the file system for files. Well yes, but guess what.. With JBoss Fuse you can package up sample messages to include alongside your profiles (think of "smoke testing" with known good messages). And sure enough, we included some sample
 messages. Go to the Wiki, select the fsi/file.listener profile. You should see a little data folder in the profile listing:
@@ -232,23 +202,8 @@ Fund Persister:
 Fund Processor:
 ![fundprocess](images/fundprocess.png)
 
-### So what about the database?
-Well, since we did use an external database, let's make sure everything got stored properly.
-Go back to our _ij_ tool and type the following:
-
-    ij> select * from funds;
-    
-If successful, we should see this output:
-
-    ij> select * from funds;
-    FUNDNUMBER |TRANSACTI&|FUNDNAME                      
-    -----------------------------------------------------
-    1          |WITHDRAWL |Global                        
-    
-    1 row selected
-    ij> 
-    
-
+What about the database, please go to fundpersister container, and you should see a log that prints out the current data in the fund table
+![database](images/database.png)
 
 ### What else to Demo?
 Well we kinda just scratched the surface. We should also show the Camel debugger, Camel Tracer, and Camel profiler. 
