@@ -1,6 +1,9 @@
 # A complete Fabric8/JBoss Fuse demo
 
-The original project is by Christian Posta, you can find his original 
+The original project is by Christian Posta, you can find his original project here:
+https://github.com/christian-posta/jboss-fuse-fsi-demo
+
+
 So you want to see [Fabric8](http://fabric8.io)/[JBoss Fuse](http://www.jboss.org/products/fuse/overview/) in action, aye? Well I just demo'd this and thought, what the hell, let's spend a few more minutes making it so anyone can re-create this as a starting point. So here goes!
 
 BTW, we're using [JBoss Fuse 6.1](http://www.jboss.org/products/fuse/overview/) in this demo, but you can use the community version, [Fabric8](http://fabric8.io) as well.
@@ -93,6 +96,7 @@ Go to ~/.m2/setting.xml add the id/password of your OpenShift Management Console
 	</server>    
 
 In pom.xml of the parent directory, Make sure the plugins are configured with the Jolokia Url, setting it to your OpenShift hostname:  http://apname-namespace.rhcloud.com/jolokia
+	
 	<plugin>         
 		<groupId>io.fabric8</groupId>         
 		<artifactId>fabric8-maven-plugin</artifactId>    
