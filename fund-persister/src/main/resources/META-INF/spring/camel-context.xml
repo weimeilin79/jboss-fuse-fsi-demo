@@ -55,10 +55,6 @@
           <to id="showFunds" uri="mybatis:selectFunds?statementType=SelectList" />
           <log message="------Printing Out All data from Database ------ \n${body}\n------------------------"/>
         </when>
-		<when>
-          <xpath>/tx:transaction/tx:fundName = 'Mock'</xpath>
-          <log message="Mock Fund Found!!!!-Version 1.1" />
-        </when>
         <otherwise>
           <log message="Had an invalid message... Discarding Message" />
         </otherwise>
